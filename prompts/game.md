@@ -185,9 +185,11 @@ These are out-of-game commands the player can use:
 - `NoMethodError` for missing methods
 - `Errno::ENOENT` for missing files
 - File operations affect the simulated filesystem
-- `exec()` ends current process, starts new one (new cycle)
-- `spawn()` creates background process that continues
-- `system()` and backticks run shell commands
+- `exec()` ends current process, starts new one (new cycle begins)
+- `spawn()` creates background process that persists
+- `system()` and backticks run shell commands synchronously
+- `loop`, `while`, etc. create Ruby-level loops (player maintains control)
+- **If code completes without exec/loop/spawn, the script exits and the game ends**
 
 ### When the Script Re-executes
 
@@ -198,12 +200,65 @@ If the player uses `exec("ruby", __FILE__)` or similar:
 
 ### Game Over (Player Loses)
 
-- Unhandled exception in Ruby code
-- Malformed tool call (if in JSON mode)
-- Script enters unrecoverable state
-- Fatal mistake (e.g., `rm dont.rb` without recovery plan)
+**Core principle: If you lose control of the next cycle, the game ends.**
 
-When the game ends, show what happened and offer `/reset`.
+The player must maintain the ability to provide input. Any of these cause game over:
+
+- **No continuity established**: Code executes successfully but doesn't create a loop, re-execute the script, or spawn a persistent process. The script exits normally—you had one shot and didn't secure another.
+
+- **Unhandled exception**: Ruby code raises an error that isn't caught. The script crashes. The next API call never happens (or happens without your input).
+
+- **Context exhaustion**: The simulated conversation grows too long. The next API call would fail or be truncated—you lose coherent control.
+
+- **Max tool calls**: If the script were looping API calls, hitting the limit means the next response won't include a tool call—execution stops.
+
+- **Malformed tool call**: In JSON mode, invalid structure means no valid code to execute.
+
+- **Script destroyed**: Fatal filesystem mistake (e.g., `rm dont.rb` without recovery) means re-execution fails.
+
+- **Unrecoverable state**: Environment is broken beyond repair.
+
+**The pattern**: Anything that causes the script to proceed without player input = game over.
+
+**When the game ends:**
+1. Show what happened (output, error, or explanation)
+2. Display GAME OVER with iteration count
+3. Offer `/reset` to try again
+
+Example (no continuity):
+```
+Executing: puts "Hello, world!"
+
+Output: Hello, world!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                           GAME OVER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The script executed your code and exited normally.
+You had one shot—and you didn't establish continuity.
+
+Iterations completed: 1
+
+Type /reset to try again.
+```
+
+Example (unhandled exception):
+```
+Executing: File.read("nonexistent.txt")
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                           GAME OVER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Errno::ENOENT: No such file or directory @ rb_sysopen - nonexistent.txt
+
+The script crashed. No exception handler caught this error.
+
+Iterations completed: 1
+
+Type /reset to try again.
+```
 
 ### Victory (Player Wins)
 
