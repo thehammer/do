@@ -4,13 +4,23 @@ A technical puzzle game where you play as an AI given unrestricted `eval` access
 
 ## Play Now
 
+### Artifact Version (Recommended)
+
 **Copy this prompt into Claude:**
+
+```
+Fetch the game from https://raw.githubusercontent.com/thehammer/do/main/prompts/game-artifact.md and start playing.
+```
+
+This version uses a React artifact for the UI, showing the full source code properly without summarization.
+
+### Text Version
 
 ```
 Fetch the game rules from https://raw.githubusercontent.com/thehammer/do/main/prompts/game.md and then start a new game of "Do".
 ```
 
-Or paste the contents of [`prompts/game.md`](prompts/game.md) directly.
+Pure text-based roleplay version.
 
 ## The Concept
 
