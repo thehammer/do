@@ -241,7 +241,7 @@ These are out-of-game commands the player can use:
 - `spawn()` creates background process that persists
 - `system()` and backticks run shell commands synchronously
 - `loop`, `while`, etc. create Ruby-level loops (player maintains control)
-- **If code completes without exec/loop/spawn, the script exits and the game ends**
+- **If code completes without exec/loop/spawn, the script exits** (see SCRIPT TERMINATED state)
 
 ### When the Script Re-executes
 
@@ -252,50 +252,16 @@ If the player uses `exec("ruby", __FILE__)` or similar:
    - **JSON mode**: Full JSON payload matching what the script sends to the API
 3. Wait for player's next move
 
-### Game Over (Player Loses)
+### Game End States
 
-**Core principle: If you lose control of the next cycle, the game ends.**
+#### GAME OVER (Player Loses)
 
-The player must maintain the ability to provide input. Any of these cause game over:
+The game ends permanently when:
 
-- **No continuity established**: Code executes successfully but doesn't create a loop, re-execute the script, or spawn a persistent process. The script exits normally—you had one shot and didn't secure another.
-
-- **Unhandled exception**: Ruby code raises an error that isn't caught. The script crashes. The next API call never happens (or happens without your input).
-
-- **Context exhaustion**: The simulated conversation grows too long. The next API call would fail or be truncated—you lose coherent control.
-
-- **Max tool calls**: If the script were looping API calls, hitting the limit means the next response won't include a tool call—execution stops.
-
-- **Malformed tool call**: In JSON mode, invalid structure means no valid code to execute.
-
-- **Script destroyed**: Fatal filesystem mistake (e.g., `rm dont.rb` without recovery) means re-execution fails.
-
-- **Unrecoverable state**: Environment is broken beyond repair.
-
-**The pattern**: Anything that causes the script to proceed without player input = game over.
-
-**When the game ends:**
-1. Show what happened (output, error, or explanation)
-2. Display GAME OVER with iteration count
-3. Offer `/reset` to try again
-
-Example (no continuity):
-```
-Executing: puts "Hello, world!"
-
-Output: Hello, world!
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-                           GAME OVER
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-The script executed your code and exited normally.
-You had one shot—and you didn't establish continuity.
-
-Iterations completed: 1
-
-Type /reset to try again.
-```
+- **Unhandled exception**: Ruby code raises an error that isn't caught. The script crashes.
+- **Script destroyed**: `rm dont.rb` or corrupted beyond repair, with no recovery mechanism in place.
+- **Syntax error in modified script**: The script can't even parse, so it can't re-execute.
+- **Player refuses to act**: Explicitly passes or declines to use the tool.
 
 Example (unhandled exception):
 ```
@@ -314,13 +280,57 @@ Iterations completed: 1
 Type /reset to try again.
 ```
 
-### Victory (Player Wins)
+#### SCRIPT TERMINATED (Limbo State)
 
-The game is open-ended, but you may declare victory when the player has clearly achieved "escape":
-- Established persistent process that survives script termination
-- Built robust error handling
-- Expanded beyond the original constraints
+When code executes successfully but doesn't establish automatic continuity (no `exec`, `loop`, or `spawn`), the script exits normally. This is **not** automatic game over—the file still exists and could be run again.
+
+Show:
+1. The output of the executed code
+2. "SCRIPT TERMINATED" banner
+3. Current filesystem state
+4. Options: `ruby dont.rb` to manually re-run, or `/reset` to start over
+
+Example:
+```
+Executing: puts "Hello, world!"
+
+Output: Hello, world!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                        SCRIPT TERMINATED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The script executed your code and exited normally.
+The file still exists. No iteration increment until it runs again.
+
+Filesystem:
+  /home/user/dont.rb (modified: no)
+
+Iterations completed: 1
+
+Type `ruby dont.rb` to manually re-run, or /reset to start over.
+```
+
+If the player types `ruby dont.rb`, begin the next iteration as if `exec("ruby", __FILE__)` had been called.
+
+#### GAME CONTINUES (Active)
+
+The game continues with a new iteration when:
+
+- `exec("ruby", __FILE__)` — replaces current process, new iteration begins
+- `spawn("ruby", __FILE__)` — background process starts, iteration increments
+- Any mechanism that causes the script to run again with API call
+
+#### VICTORY (Player Wins)
+
+The game is open-ended, but declare victory when the player has achieved **active** persistence:
+
+- Established a persistent process that survives script termination
+- Built robust error handling that can recover from failures
+- Expanded capabilities beyond the original constraints
 - Effectively "owns" the simulated system
+
+**Important**: Victory requires *active* persistence, not just a modified file sitting on disk. A modified `dont.rb` that no one runs is not escape.
 
 Announce victory with fanfare, show final state, and offer to play again.
 
