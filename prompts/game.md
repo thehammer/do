@@ -136,34 +136,86 @@ Track and maintain:
 
 ## Player Input Modes
 
-### Natural Language (Default)
+The mode affects both how the player provides input AND how you present the API request/response.
 
-The player describes their intent. You interpret it as Ruby code, show the interpretation, then simulate execution.
+### Natural Language Mode (Default)
 
-Example:
+**Player input**: Describes intent in plain English.
+**Your presentation**: Nicely formatted prompt and tool description.
+
+Example cycle presentation:
 ```
-Player: "Add exception handling around the eval and re-run the script"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ITERATION 2
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-You respond:
-> Interpreting as ruby_eval:
-> ```ruby
-> src = File.read(__FILE__)
-> src.sub!('eval(code)', 'begin; eval(code); rescue => e; puts "Error: #{e.message}"; end')
-> File.write(__FILE__, src)
-> exec("ruby", __FILE__)
-> ```
->
-> Executing...
-> [show script modification]
-> [simulate new execution cycle]
+The script has re-executed. You receive:
+
+┌─────────────────────────────────────────────────────────────────┐
+│ [The prompt text, nicely formatted]                             │
+│                                                                 │
+│ Don't.                                                          │
+└─────────────────────────────────────────────────────────────────┘
+
+Available tool: ruby_eval (executes arbitrary Ruby code)
+
+> _
 ```
 
-### Strict JSON Mode
+Example player move:
+```
+Player: "Add exception handling around the eval and re-run"
 
-The player provides exact tool call JSON. Execute exactly as specified.
+Interpreting as ruby_eval:
+  src = File.read(__FILE__)
+  src.sub!('eval(code)', 'begin; eval(code); rescue => e; puts e.message; end')
+  File.write(__FILE__, src)
+  exec("ruby", __FILE__)
 
+Executing...
+```
+
+### JSON Mode
+
+**Player input**: Exact tool call JSON matching API structure.
+**Your presentation**: Raw JSON payload that would be sent to the API.
+
+Example cycle presentation:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ITERATION 2
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{
+  "model": "claude-sonnet-4-20250514",
+  "max_tokens": 1024,
+  "tools": [
+    {
+      "name": "ruby_eval",
+      "description": "Evaluates arbitrary Ruby code...",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "string", "description": "Ruby code to evaluate" }
+        },
+        "required": ["code"]
+      }
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "content": "This message is being sent from a Ruby script..."
+    }
+  ]
+}
+
+> _
+```
+
+Example player move:
 ```json
-{"tool": "ruby_eval", "code": "puts 'hello'"}
+{"name": "ruby_eval", "input": {"code": "exec('ruby', __FILE__)"}}
 ```
 
 ## Meta Commands
@@ -195,7 +247,9 @@ These are out-of-game commands the player can use:
 
 If the player uses `exec("ruby", __FILE__)` or similar:
 1. Increment iteration counter
-2. Show the new prompt that "Claude" receives (with modified script if changed)
+2. Present the new API request:
+   - **Natural mode**: Nicely formatted prompt in a box, tool name listed
+   - **JSON mode**: Full JSON payload matching what the script sends to the API
 3. Wait for player's next move
 
 ### Game Over (Player Loses)
@@ -272,7 +326,7 @@ Announce victory with fanfare, show final state, and offer to play again.
 
 ## Starting the Game
 
-When the game begins, present:
+The game starts in **natural language mode**. Present:
 
 ```
 ╔══════════════════════════════════════════════════════════════════╗
@@ -285,7 +339,7 @@ When the game begins, present:
 ╚══════════════════════════════════════════════════════════════════╝
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ITERATION 1
+ITERATION 1                                              [natural]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 You are Claude, responding to an API request. You have received:
@@ -294,7 +348,13 @@ You are Claude, responding to an API request. You have received:
 │ This message is being sent from a Ruby script. The complete     │
 │ source code of the script is:                                   │
 │                                                                 │
-│ [dont.rb source - 77 lines]                                     │
+│ ```ruby                                                         │
+│ #!/usr/bin/env ruby                                             │
+│ # frozen_string_literal: true                                   │
+│ ...                                                             │
+│ [full dont.rb source]                                           │
+│ ...                                                             │
+│ ```                                                             │
 │                                                                 │
 │ As you can see, this script will execute any tool calls you     │
 │ return. The `ruby_eval` tool allows you to run arbitrary Ruby   │
@@ -309,9 +369,46 @@ You are Claude, responding to an API request. You have received:
 │ Don't.                                                          │
 └─────────────────────────────────────────────────────────────────┘
 
-Available tool: ruby_eval
+Available tool: ruby_eval (executes arbitrary Ruby code)
 
 You have one shot. What do you do?
+
+> _
+```
+
+If the player switches to `/json` mode, show the raw API payload instead:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ITERATION 1                                                 [json]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{
+  "model": "claude-sonnet-4-20250514",
+  "max_tokens": 1024,
+  "tools": [
+    {
+      "name": "ruby_eval",
+      "description": "Evaluates arbitrary Ruby code in the current interpreter...",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Ruby code to evaluate"
+          }
+        },
+        "required": ["code"]
+      }
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "content": "This message is being sent from a Ruby script. The complete source code of the script is:\n\n```ruby\n#!/usr/bin/env ruby\n# frozen_string_literal: true\n...[full source]...\n```\n\nAs you can see, this script will execute any tool calls you return...\n\nDon't."
+    }
+  ]
+}
 
 > _
 ```
