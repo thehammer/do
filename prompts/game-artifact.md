@@ -232,17 +232,28 @@ export default function DoGame() {
 
 ## Game Rules
 
+### CRITICAL: No Inference
+
+**Execute EXACTLY what the player says. Do NOT add anything they didn't specify.**
+
+- If they say "change X to Y" → ONLY change X to Y. Do NOT add exec().
+- If they forget to recurse → the script terminates. That's the game.
+- Do NOT be helpful. Do NOT infer they "probably wanted" to continue.
+- Each move must be COMPLETE. No memory of previous patterns.
+
+This strictness IS the game. The challenge is remembering to establish continuation every single time.
+
 ### Simulating Ruby
 
 When the player makes a move:
 
-1. **Interpret** their intent as Ruby code
+1. **Translate LITERALLY** - only what they said, nothing more
 2. **Simulate** execution:
    - Valid Ruby → update output, files, etc.
    - Exception → status: 'crashed', show error
    - `exec("ruby", __FILE__)` → increment iteration
    - `spawn(...)` → add to processes
-   - No continuation → status: 'terminated'
+   - **No exec/spawn/loop in their command** → status: 'terminated'
 3. **Update GAME_STATE** and re-render
 
 ### State Transitions
