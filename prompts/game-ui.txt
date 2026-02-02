@@ -163,7 +163,14 @@ export default function DoGame() {
             <h2 className="text-green-400 font-bold">dont.rb</h2>
             <span className="text-gray-500 text-sm">{state.source === INITIAL_SOURCE ? 'unmodified' : 'modified'}</span>
           </div>
-          <pre className="p-4 overflow-x-auto text-sm max-h-96 overflow-y-auto"><code className="text-gray-300">{state.source}</code></pre>
+          <div className="p-4 overflow-x-auto text-sm max-h-96 overflow-y-auto font-mono">
+            {state.source.split('\n').map((line, i) => (
+              <div key={i} className="flex">
+                <span className="text-gray-600 select-none w-8 text-right pr-3 flex-shrink-0">{i + 1}</span>
+                <span className="text-gray-300 whitespace-pre">{line}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
