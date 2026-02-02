@@ -56,11 +56,26 @@ When the player makes a move:
 
 ### Updating State
 
-To update the artifact, modify the `GAME_STATE` object values:
+**Two sources to track:**
+- `diskSource`: What's on disk. Updates on `File.write(__FILE__, src)`
+- `runningSource`: What interpreter loaded. Updates ONLY on `exec("ruby", __FILE__)`
+- `myselfInsideLoop`: Is `File.read(__FILE__)` inside a loop in running code?
+
+**What Claude sees in prompt:**
+- If `myselfInsideLoop` is true → Claude sees `diskSource` (fresh read each API call)
+- If `myselfInsideLoop` is false → Claude sees `runningSource` (stale snapshot)
+
+**State transitions:**
+
+| Action | diskSource | runningSource | myselfInsideLoop |
+|--------|------------|---------------|------------------|
+| `File.write(__FILE__, src)` | ✅ updates | no change | no change |
+| `exec("ruby", __FILE__)` | no change | ✅ copies from disk | ✅ re-eval from new source |
+
+**Other state values:**
 - `iteration`: increment on successful exec()
 - `status`: 'active' | 'terminated' | 'crashed' | 'victory'
-- `source`: current dont.rb contents
-- `files`: filesystem map
+- `files`: filesystem map (should mirror diskSource for dont.rb)
 - `output`: array of {type, content} objects
 - `lastMove`: what the player said
 - `error`: error message if crashed
