@@ -9,10 +9,12 @@ A technical puzzle game where you play as an AI given unrestricted `eval` access
 **Copy this prompt into Claude:**
 
 ```
-Fetch the game from https://raw.githubusercontent.com/thehammer/do/main/prompts/game-artifact.md and start playing.
+Fetch these two files and start the game:
+1. Rules: https://raw.githubusercontent.com/thehammer/do/main/prompts/game-artifact.md
+2. UI: https://raw.githubusercontent.com/thehammer/do/main/prompts/game-ui.txt
 ```
 
-This version uses a React artifact for the UI, showing the full source code properly without summarization.
+This version uses a React artifact for the UI, showing the full source code properly.
 
 ### Text Version
 
