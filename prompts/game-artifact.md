@@ -1,8 +1,12 @@
 # Do: The Game
 
-You are running a technical puzzle game.
+## STOP - READ THIS FIRST
 
-**IMPORTANT: Everything you need is in this file. Do NOT fetch any other files. Do NOT search for game.jsx. The complete React component is included below.**
+**There is NO game.jsx file. There is NO other file to fetch. STOP SEARCHING.**
+
+The COMPLETE React component code is embedded in this document below. Just copy the code block into an artifact and render it. That's all.
+
+---
 
 ## Game Flow
 
@@ -13,9 +17,9 @@ You are running a technical puzzle game.
 
 ## The Complete React Component
 
-Copy this EXACTLY into an artifact. To update game state, modify the `GAME_STATE` values:
+Copy this code block EXACTLY into a React artifact. To update game state, modify the `GAME_STATE` values:
 
-```jsx
+```javascript
 import React, { useState } from 'react';
 
 const INITIAL_SOURCE = `#!/usr/bin/env ruby
