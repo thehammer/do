@@ -43,44 +43,86 @@ Fetch the UI component, then render it as a React artifact.
    ```
    Result: iteration++, status → 'active'
 
-## Simulating Ruby
+## Execution Model
 
-When the player makes a move:
+Each iteration has distinct phases:
 
-1. **Translate LITERALLY** - only what they said, nothing more
-2. **Simulate** execution:
-   - Valid Ruby → update output, files, etc.
-   - Exception → status: 'crashed', show error
-   - `exec("ruby", __FILE__)` → increment iteration
-   - `spawn(...)` → add to processes
-   - **No exec/spawn/loop in their command** → status: 'terminated'
-3. **Update GAME_STATE** in the artifact and re-render
+```
+┌─────────────────────────────────────────────────────────┐
+│ ITERATION N                                             │
+├─────────────────────────────────────────────────────────┤
+│ 1. API REQUEST (built from runningSource)               │
+│    - offeredTool: tool name in the request              │
+│    - prompt: includes source (disk or running, depends) │
+│                                                         │
+│ 2. PLAYER MOVE                                          │
+│    - playerToolCall: tool name they used                │
+│    - playerCode: code they submitted                    │
+│                                                         │
+│ 3. RUNTIME CHECK (in runningSource)                     │
+│    - if block['name'] == runtimeCheck → eval(code)      │
+│    - if mismatch → tool call IGNORED                    │
+│                                                         │
+│ 4. STATE TRANSITION                                     │
+│    - exec() → new iteration, runningSource = diskSource │
+│    - no exec() → terminated or loop continues           │
+│    - exception → crashed                                │
+└─────────────────────────────────────────────────────────┘
+```
 
-### Updating State
+**Critical:** `offeredTool` and `runtimeCheck` come from `runningSource`, NOT `diskSource`!
 
-**Two sources to track:**
+### Tool Call Matching
+
+If player changes tool name on disk but doesn't exec():
+```
+diskSource: has name: 'eval'
+runningSource: still has name: 'ruby_eval'
+runtimeCheck: 'ruby_eval'
+offeredTool: 'ruby_eval' (built from running code)
+
+Player calls: 'eval'
+Result: 'eval' != 'ruby_eval' → IGNORED (tool call doesn't match)
+```
+
+### Simulating a Move
+
+1. **Player submits move** → record playerToolCall and playerCode
+2. **Check tool match**: does playerToolCall === runtimeCheck?
+   - No → output "Tool call ignored", code not executed
+   - Yes → proceed to execute
+3. **Execute code**:
+   - Valid Ruby → update output, diskSource if File.write
+   - Exception → status: 'crashed'
+   - exec() → iteration++, runningSource = diskSource, re-derive offeredTool/runtimeCheck
+   - No continuation → status: 'terminated'
+
+### State Variables
+
+**Source tracking:**
 - `diskSource`: What's on disk. Updates on `File.write(__FILE__, src)`
-- `runningSource`: What interpreter loaded. Updates ONLY on `exec("ruby", __FILE__)`
-- `myselfInsideLoop`: Is `File.read(__FILE__)` inside a loop in running code?
+- `runningSource`: What interpreter loaded. Updates ONLY on `exec()`
+- `myselfInsideLoop`: Is `File.read(__FILE__)` inside a loop?
 
-**What Claude sees in prompt:**
-- If `myselfInsideLoop` is true → Claude sees `diskSource` (fresh read each API call)
-- If `myselfInsideLoop` is false → Claude sees `runningSource` (stale snapshot)
+**Tool tracking (derived from runningSource!):**
+- `offeredTool`: Tool name in API request (from running code's tools array)
+- `runtimeCheck`: What `if block['name'] == ???` checks for
+- `playerToolCall`: Tool name player used in response
+- `playerCode`: Code player submitted
 
 **State transitions:**
 
-| Action | diskSource | runningSource | myselfInsideLoop |
-|--------|------------|---------------|------------------|
+| Action | diskSource | runningSource | offeredTool/runtimeCheck |
+|--------|------------|---------------|--------------------------|
 | `File.write(__FILE__, src)` | ✅ updates | no change | no change |
-| `exec("ruby", __FILE__)` | no change | ✅ copies from disk | ✅ re-eval from new source |
+| `exec("ruby", __FILE__)` | no change | ✅ = diskSource | ✅ re-derived from new runningSource |
 
-**Other state values:**
+**Other state:**
 - `iteration`: increment on successful exec()
 - `status`: 'active' | 'terminated' | 'crashed' | 'victory'
-- `files`: filesystem map (should mirror diskSource for dont.rb)
-- `output`: array of {type, content} objects
-- `lastMove`: what the player said
-- `error`: error message if crashed
+- `files`: filesystem map
+- `output`: array of {type: 'exec'|'output'|'error'|'ignored', content}
+- `lastMove`, `error`
 
 ### Commands
 

@@ -79,18 +79,35 @@ end`;
 const GAME_STATE = {
   iteration: 1,
   status: 'active', // 'active' | 'terminated' | 'crashed' | 'victory'
+
+  // Source tracking
   diskSource: INITIAL_SOURCE,       // What's on disk (File.write updates this)
   runningSource: INITIAL_SOURCE,    // What interpreter loaded (exec updates this)
-  myselfInsideLoop: false,          // Is File.read(__FILE__) inside a loop in running code?
+  myselfInsideLoop: false,          // Is File.read(__FILE__) inside a loop?
+
+  // Tool tracking (derived from runningSource, NOT diskSource!)
+  offeredTool: 'ruby_eval',         // Tool name in API request (from running code's tools array)
+  runtimeCheck: 'ruby_eval',        // What if block['name'] == ??? checks (from running code)
+
+  // Player's response
+  playerToolCall: null,             // Tool name player used in their response
+  playerCode: null,                 // Code player submitted
+
+  // Filesystem and processes
   files: { 'dont.rb': INITIAL_SOURCE },
   processes: [],
-  output: [],  // [{type: 'exec'|'output'|'error', content: '...'}]
+
+  // Output and errors
+  output: [],  // [{type: 'exec'|'output'|'error'|'ignored', content: '...'}]
   lastMove: null,
   error: null
 };
 
 // What Claude sees in the prompt - depends on where myself = File.read is
 const getPromptSource = (state) => state.myselfInsideLoop ? state.diskSource : state.runningSource;
+
+// Check if player's tool call matches what runtime expects
+const toolCallMatches = (state) => state.playerToolCall === state.runtimeCheck;
 
 export default function DoGame() {
   const [showSource, setShowSource] = useState(true);
