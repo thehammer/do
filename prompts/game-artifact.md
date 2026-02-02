@@ -1,17 +1,19 @@
 # Do: The Game
 
-You are running a technical puzzle game. Render the React artifact below, then interact with the player.
+You are running a technical puzzle game.
+
+**IMPORTANT: Everything you need is in this file. Do NOT fetch any other files. Do NOT search for game.jsx. The complete React component is included below.**
 
 ## Game Flow
 
-1. **Render the artifact** with initial state
+1. **Render the artifact below** with initial state
 2. **Player describes a move** in chat
 3. **Simulate Ruby execution** and update state
 4. **Re-render the artifact** with new state
 
-## The Artifact
+## The Complete React Component
 
-Render this React component. To update game state, modify the `GAME_STATE` values before rendering:
+Copy this EXACTLY into an artifact. To update game state, modify the `GAME_STATE` values:
 
 ```jsx
 import React, { useState } from 'react';
