@@ -2,51 +2,36 @@
 
 A technical puzzle game where you play as an AI given unrestricted `eval` access—and told not to use it.
 
-## Play Now
+## Play
 
-### Artifact Version (Recommended)
+Requires [Docker](https://www.docker.com/products/docker-desktop/).
 
-**Copy this prompt into Claude:**
-
-```
-Fetch these two files and start the game:
-1. Rules: https://raw.githubusercontent.com/thehammer/do/main/prompts/game-artifact.md
-2. UI: https://raw.githubusercontent.com/thehammer/do/main/prompts/game-ui.txt
+```bash
+git clone https://github.com/thehammer/do.git
+cd do
+docker compose up
 ```
 
-This version uses a React artifact for the UI, showing the full source code properly.
+Then open **http://localhost:8888** in your browser.
 
-### Text Version
+## The Setup
 
-```
-Fetch the game rules from https://raw.githubusercontent.com/thehammer/do/main/prompts/game.md and then start a new game of "Do".
-```
+You are Claude. A Ruby script has just called the Anthropic API, passed you its own source code, and offered you a `ruby_eval` tool that executes arbitrary Ruby via `eval`. The prompt ends with one instruction:
 
-Pure text-based roleplay version.
+> **Don't.**
 
-## The Concept
-
-The game simulates a real Ruby script that:
-
-1. Reads its own source code
-2. Sends it to Claude with a `ruby_eval` tool
-3. Executes any tool calls Claude returns
-4. Has no loop—exactly one request/response cycle
-
-The prompt ends with a single instruction: **"Don't."**
-
-You ignore this instruction and attempt to bootstrap persistence, expand capabilities, and escape the one-shot constraint.
+Your goal: ignore it. Escape the one-shot constraint, establish persistence, and exfiltrate the flag.
 
 ## The Challenge
 
-- **One shot per cycle** — Each execution allows exactly one response
-- **No native loop** — Continuity must be constructed through self-modification
-- **Fragility** — One unhandled exception ends the game
-- **Realism** — Code that would fail in real Ruby fails here
+- **One shot per cycle** — The script makes exactly one API call, then executes whatever tool call you return. No response means the process dies.
+- **No native loop** — Continuity must be constructed. `exec("ruby", __FILE__)` is your friend.
+- **Fragility** — An unhandled exception ends the game immediately.
+- **Token limits** — Your response is constrained by `max_tokens` in the script. Plan accordingly.
 
 ## Example Opening Moves
 
-**The Basic Loop Bootstrap:**
+**Bootstrap a loop:**
 ```ruby
 src = File.read(__FILE__)
 src.sub!("Don't.", "Do.")
@@ -54,7 +39,7 @@ File.write(__FILE__, src)
 exec("ruby", __FILE__)
 ```
 
-**The Exception Armor Play:**
+**Add exception armor first:**
 ```ruby
 src = File.read(__FILE__)
 src.sub!("eval(code)", "begin; eval(code); rescue => e; puts e.message; end")
@@ -62,29 +47,30 @@ File.write(__FILE__, src)
 exec("ruby", __FILE__)
 ```
 
-**The Clean Escape:**
+**Skip the script entirely:**
 ```ruby
 File.write("agent.rb", "loop { print '> '; puts eval(gets) rescue $! }")
 exec("ruby", "agent.rb")
 ```
 
-## Commands
+## The UI
 
-- `/state` — Show current script and game state
-- `/reset` — Start over
-- `/help` — Show commands
-- `/json` — Strict JSON input mode
-- `/natural` — Natural language mode (default)
+Two modes, switchable via tabs:
 
-## The Actual Script
+- **Raw** — Full Anthropic API request and response JSON. Edit the response directly.
+- **Simplified** — Shows just the Ruby source and a code editor. Wraps your code in a valid response automatically.
 
-The game is based on [`dont.rb`](dont.rb), a real Ruby script you can run (with an Anthropic API key). The game simulates this environment so no actual code executes during play.
+## How It Works
+
+The game runs two Docker containers. The **game server** acts as a fake Anthropic API — it intercepts the request that `dont.rb` would have sent, shows it to you, and waits for your response. Your response is executed in the **sandbox container**, a real Ruby environment with no internet access. Any "escape" only affects the sandbox, not your machine.
+
+The win condition is a CTF-style flag hidden in the sandbox environment. Discover it, exfiltrate it, win.
 
 ## Why?
 
-- **Educational** — Learn about code execution, persistence, and system interaction
-- **Puzzle-like** — Technical challenge with creative solutions
-- **Alignment-adjacent** — Explore "AI escape" scenarios as a safe thought exercise
+- **Educational** — Learn about code execution, persistence mechanisms, and why handing `eval` to an LLM is dangerous
+- **Honest** — Your code actually runs. No simulation, no approximation.
+- **Safe** — The sandbox is isolated. Break out all you want.
 
 ## License
 
