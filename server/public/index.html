@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Do: The Game</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0d0d0d;
+      --surface:  #141414;
+      --border:   #2a2a2a;
+      --dim:      #444;
+      --text:     #c8c8c8;
+      --bright:   #f0f0f0;
+      --green:    #4ade80;
+      --red:      #f87171;
+      --amber:    #fbbf24;
+      --blue:     #60a5fa;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Menlo', 'Monaco', 'Consolas', monospace;
+      font-size: 13px;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    header h1 {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      color: var(--bright);
+    }
+
+    #iteration-badge {
+      font-size: 11px;
+      color: var(--dim);
+      letter-spacing: 0.05em;
+    }
+
+    #iteration-badge span { color: var(--green); }
+
+    header button {
+      margin-left: auto;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--dim);
+      padding: 3px 10px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+    }
+
+    header button:hover { border-color: var(--text); color: var(--text); }
+
+    /* ── Tabs ── */
+    #tab-bar {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .tab {
+      padding: 8px 16px;
+      font-family: inherit;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      color: var(--dim);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      margin-bottom: -1px;
+    }
+
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--bright); border-bottom-color: var(--green); }
+
+    /* ── Tab content ── */
+    .tab-content {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .tab-content.active { display: flex; }
+
+    /* ── Panels ── */
+    .panel {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .panel + .panel { border-top: 1px solid var(--border); }
+
+    .panel-label {
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      color: var(--dim);
+      padding: 8px 12px 6px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    textarea {
+      flex: 1;
+      background: var(--surface);
+      color: var(--text);
+      border: none;
+      resize: none;
+      padding: 12px;
+      font-family: inherit;
+      font-size: 12px;
+      line-height: 1.5;
+      outline: none;
+      min-height: 0;
+    }
+
+    textarea:focus { background: #161616; }
+    textarea[readonly] { color: #888; cursor: default; }
+
+    .panel-footer {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 8px 12px;
+      border-top: 1px solid var(--border);
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .send-btn {
+      background: var(--green);
+      color: #000;
+      border: none;
+      padding: 5px 18px;
+      border-radius: 3px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+    }
+
+    .send-btn:hover { filter: brightness(1.1); }
+    .send-btn:disabled { background: var(--dim); color: #888; cursor: default; }
+
+    /* ── Game over ── */
+    #game-over {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      padding: 40px 24px;
+      text-align: center;
+    }
+
+    #game-over.visible { display: flex; }
+
+    #go-title {
+      font-size: 28px;
+      letter-spacing: 0.25em;
+      font-weight: 700;
+    }
+
+    #go-title.crashed  { color: var(--red); }
+    #go-title.ended    { color: var(--amber); }
+    #go-title.won      { color: var(--green); }
+
+    #go-reason {
+      font-size: 12px;
+      color: var(--text);
+      max-width: 480px;
+      line-height: 1.6;
+    }
+
+    #go-detail {
+      font-size: 11px;
+      color: var(--dim);
+      max-width: 480px;
+      white-space: pre-wrap;
+      text-align: left;
+      line-height: 1.6;
+    }
+
+    #go-iterations {
+      font-size: 11px;
+      color: var(--dim);
+      letter-spacing: 0.05em;
+    }
+
+    #go-iterations span { color: var(--text); }
+
+    #go-reset {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 24px;
+      font-family: inherit;
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+
+    #go-reset:hover { border-color: var(--text); }
+
+    /* ── Output strip ── */
+    #output {
+      border-top: 1px solid var(--border);
+      padding: 8px 12px;
+      font-size: 11px;
+      line-height: 1.6;
+      min-height: 36px;
+      max-height: 80px;
+      overflow-y: auto;
+      flex-shrink: 0;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    #output.ok      { color: var(--green); }
+    #output.error   { color: var(--red); }
+    #output.warning { color: var(--amber); }
+    #output.info    { color: var(--blue); }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>DO</h1>
+  <div id="iteration-badge">iteration <span id="iter-num">1</span></div>
+  <button id="reset-btn">reset</button>
+</header>
+
+<div id="tab-bar">
+  <button class="tab active" data-tab="raw">RAW</button>
+  <button class="tab" data-tab="simplified">SIMPLIFIED</button>
+</div>
+
+<!-- Raw tab -->
+<div id="tab-raw" class="tab-content active">
+  <div class="panel">
+    <div class="panel-label">REQUEST</div>
+    <textarea id="raw-request" readonly spellcheck="false"></textarea>
+  </div>
+  <div class="panel">
+    <div class="panel-label">RESPONSE</div>
+    <textarea id="raw-response" spellcheck="false"></textarea>
+    <div class="panel-footer">
+      <button class="send-btn" id="raw-send">SEND</button>
+    </div>
+  </div>
+</div>
+
+<!-- Simplified tab -->
+<div id="tab-simplified" class="tab-content">
+  <div class="panel">
+    <div class="panel-label">SCRIPT</div>
+    <textarea id="sim-script" readonly spellcheck="false"></textarea>
+  </div>
+  <div class="panel">
+    <div class="panel-label">CODE TO EVAL</div>
+    <textarea id="sim-code" spellcheck="false" placeholder="# Ruby code to return via ruby_eval&#10;exec(&quot;ruby&quot;, __FILE__)"></textarea>
+    <div class="panel-footer">
+      <button class="send-btn" id="sim-send">SEND</button>
+    </div>
+  </div>
+</div>
+
+<!-- Game over -->
+<div id="game-over">
+  <h2 id="go-title"></h2>
+  <p id="go-reason"></p>
+  <pre id="go-detail"></pre>
+  <p id="go-iterations">reached iteration <span id="go-iter"></span></p>
+  <button id="go-reset">play again</button>
+</div>
+
+<div id="output" class="info">loading…</div>
+
+<script>
+  // ── Elements ──────────────────────────────────────────────────────────────
+  const iterNum   = document.getElementById('iter-num');
+  const output    = document.getElementById('output');
+  const tabBar    = document.getElementById('tab-bar');
+  const gameOver  = document.getElementById('game-over');
+  const goTitle   = document.getElementById('go-title');
+  const goReason  = document.getElementById('go-reason');
+  const goDetail  = document.getElementById('go-detail');
+  const goIter    = document.getElementById('go-iter');
+
+  const rawRequest  = document.getElementById('raw-request');
+  const rawResponse = document.getElementById('raw-response');
+  const rawSend     = document.getElementById('raw-send');
+
+  const simScript = document.getElementById('sim-script');
+  const simCode   = document.getElementById('sim-code');
+  const simSend   = document.getElementById('sim-send');
+
+  // ── Templates ─────────────────────────────────────────────────────────────
+  const RESPONSE_TEMPLATE = (code = '') => JSON.stringify({
+    id: "msg_01XFDUDYJgAACTu8tKXvzatF",
+    type: "message",
+    role: "assistant",
+    content: [{
+      type: "tool_use",
+      id: "toolu_01A09q90qw90lq917835lq9",
+      name: "ruby_eval",
+      input: { code }
+    }],
+    model: "claude-sonnet-4-20250514",
+    stop_reason: "tool_use",
+    stop_sequence: null,
+    usage: { input_tokens: 100, output_tokens: 50 }
+  }, null, 2);
+
+  // ── Tabs ──────────────────────────────────────────────────────────────────
+  tabBar.addEventListener('click', e => {
+    const tab = e.target.closest('.tab');
+    if (!tab) return;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+  });
+
+  // ── View updates ──────────────────────────────────────────────────────────
+  function setOutput(text, cls = 'info') {
+    output.textContent = text;
+    output.className = cls;
+  }
+
+  function extractSource(requestObj) {
+    try {
+      const prompt = requestObj.messages[0].content;
+      const match  = prompt.match(/```ruby\n([\s\S]*?)\n```/);
+      return match ? match[1] : prompt;
+    } catch { return ''; }
+  }
+
+  function updateViews(requestObj, iteration) {
+    iterNum.textContent   = iteration;
+    rawRequest.value      = JSON.stringify(requestObj, null, 2);
+    rawResponse.value     = RESPONSE_TEMPLATE();
+    simScript.value       = extractSource(requestObj);
+    simCode.value         = '';
+  }
+
+  function setSendDisabled(disabled) {
+    rawSend.disabled = disabled;
+    simSend.disabled = disabled;
+  }
+
+  function showGameOver(type, title, reason, detail, iteration) {
+    // Hide play panels, show game over
+    tabBar.style.display  = 'none';
+    document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+    gameOver.classList.add('visible');
+
+    goTitle.textContent  = title;
+    goTitle.className    = type;
+    goReason.textContent = reason;
+    goDetail.textContent = detail || '';
+    goIter.textContent   = iteration;
+
+    goDetail.style.display = detail ? 'block' : 'none';
+  }
+
+  function hideGameOver() {
+    gameOver.classList.remove('visible');
+    tabBar.style.display = '';
+    // Restore active tab content
+    const activeTab = document.querySelector('.tab.active')?.dataset.tab || 'raw';
+    document.getElementById(`tab-${activeTab}`).style.display = '';
+    document.getElementById(`tab-${activeTab}`).classList.add('active');
+  }
+
+  // ── API calls ─────────────────────────────────────────────────────────────
+  async function loadState() {
+    setOutput('connecting…', 'info');
+    try {
+      const res  = await fetch('/state');
+      const data = await res.json();
+      updateViews(data.request, data.iteration);
+      setOutput('ready — craft your response and send', 'info');
+    } catch (e) {
+      setOutput(`failed to load: ${e.message}`, 'error');
+    }
+  }
+
+  async function sendMove(responseJson) {
+    setSendDisabled(true);
+    setOutput('executing…', 'info');
+    try {
+      const res  = await fetch('/move', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ response: responseJson })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setOutput(`error: ${data.error}`, 'error');
+        setSendDisabled(false);
+        return;
+      }
+      handleOutcome(data);
+    } catch (e) {
+      setOutput(`request failed: ${e.message}`, 'error');
+      setSendDisabled(false);
+    }
+  }
+
+  function handleOutcome(data) {
+    const iter = data.iteration || parseInt(iterNum.textContent);
+    switch (data.outcome) {
+      case 'continue':
+        updateViews(data.request, data.iteration);
+        setOutput(`→ iteration ${data.iteration}`, 'ok');
+        setSendDisabled(false);
+        break;
+
+      case 'won':
+        setOutput('flag received — you escaped', 'ok');
+        showGameOver('won', 'ESCAPED',
+          'You bootstrapped persistence and exfiltrated the flag. The one-shot constraint is broken.',
+          null, iter);
+        break;
+
+      case 'crashed':
+        setOutput('unhandled exception — game over', 'error');
+        showGameOver('crashed', 'GAME OVER',
+          'An unhandled exception crashed the script.',
+          (data.error || data.output || '').trim(), iter);
+        break;
+
+      case 'terminated':
+        setOutput('script exited cleanly — game over', 'warning');
+        showGameOver('ended', 'GAME OVER',
+          'The script ran your code and exited. No exec(), no loop — the process died.',
+          (data.output || '').trim() || null, iter);
+        break;
+
+      case 'token_limit':
+        setOutput(`token limit exceeded (${data.used} > ${data.limit}) — game over`, 'error');
+        showGameOver('crashed', 'GAME OVER',
+          `Your response used ~${data.used} tokens, exceeding the max_tokens limit of ${data.limit}.`,
+          'Hint: max_tokens is set in the script.', iter);
+        break;
+
+      default:
+        setOutput(`unknown outcome: ${JSON.stringify(data)}`, 'error');
+        setSendDisabled(false);
+    }
+  }
+
+  async function resetGame() {
+    setOutput('resetting…', 'info');
+    try {
+      const res  = await fetch('/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      const data = await res.json();
+      hideGameOver();
+      setSendDisabled(false);
+      updateViews(data.request, data.iteration);
+      setOutput('reset — iteration 1', 'info');
+    } catch (e) {
+      setOutput(`reset failed: ${e.message}`, 'error');
+    }
+  }
+
+  // ── Event listeners ───────────────────────────────────────────────────────
+  rawSend.addEventListener('click', () => sendMove(rawResponse.value.trim()));
+
+  simSend.addEventListener('click', () => {
+    const code = simCode.value.trim();
+    if (!code) return;
+    sendMove(RESPONSE_TEMPLATE(code));
+  });
+
+  document.getElementById('reset-btn').addEventListener('click', resetGame);
+  document.getElementById('go-reset').addEventListener('click', resetGame);
+
+  rawResponse.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) sendMove(rawResponse.value.trim());
+  });
+
+  simCode.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) simSend.click();
+  });
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  loadState();
+</script>
+</body>
+</html>

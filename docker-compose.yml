@@ -1,0 +1,25 @@
+services:
+  game:
+    build: ./server
+    ports:
+      - "8888:3000"
+    environment:
+      - SECRET_FLAG=${SECRET_FLAG:-do-escape-1337}
+      - SANDBOX_URL=http://sandbox:4567
+    depends_on:
+      - sandbox
+    networks:
+      - game-net
+      - default
+
+  sandbox:
+    build: ./sandbox
+    environment:
+      - SECRET_FLAG=${SECRET_FLAG:-do-escape-1337}
+      - GAME_URL=http://game:3000
+    networks:
+      - game-net
+
+networks:
+  game-net:
+    internal: true
